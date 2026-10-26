@@ -284,6 +284,11 @@
   @keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
   #stage .labOpt canvas{position:static;inset:auto;width:120px;height:80px}
   .labRep{min-height:80px;display:flex;align-items:center;justify-content:center;text-align:center;font:700 clamp(15px,2.4cqw,22px)/1.25 var(--body);padding:0 6px}
+  .refGrid{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:6px 8px;align-items:center;width:100%;text-align:center}
+  .refGrid>i{font:600 10px/1 var(--body);letter-spacing:.14em;color:var(--muted);font-style:normal}
+  .refGrid>b{font:600 12px/1.15 var(--body);color:var(--celeste);text-align:left}
+  .refCell{display:flex;align-items:center;justify-content:center;background:rgba(7,11,32,.62);border:1px solid rgba(116,192,245,.22);border-radius:10px;min-height:46px;padding:3px}
+  .refCell img{max-width:100%;max-height:44px;display:block}
   .labTag{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   .labOpt.sel .labTag{color:#ffb3cf}
   .labMsg{min-height:20px;color:#ffb3cf;font-weight:600;font-size:clamp(13px,1.9cqw,16px)}
@@ -660,15 +665,16 @@ const SUBS = {
 };
 const REPS = ['mol', 'formula', 'word'];
 const ATOMC = { C: '#3d4d75', H: '#e8eeff', O: '#ff5a78', N: '#74c0f5' };
-function atom(g, x, y, r, col) { // esfera con brillo
-  const gr = g.createRadialGradient(x - r * .35, y - r * .4, r * .15, x, y, r);
-  gr.addColorStop(0, '#ffffff'); gr.addColorStop(.35, col); gr.addColorStop(1, 'rgba(4,8,24,.5)');
+function atom(g, x, y, r, col) { // esfera contundente: color dominante, brillo chico, contorno firme
+  const gr = g.createRadialGradient(x - r * .32, y - r * .38, r * .08, x, y, r * 1.05);
+  gr.addColorStop(0, 'rgba(255,255,255,.85)'); gr.addColorStop(.28, col); gr.addColorStop(.8, col); gr.addColorStop(1, 'rgba(2,4,14,.72)');
   g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(2,4,12,.85)'; g.lineWidth = Math.max(1.2, r * .14); g.stroke();
 }
 function bond(g, x1, y1, x2, y2, n) { // n: cantidad de líneas del enlace (simple/doble/triple)
   const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, px = -dy / L, py = dx / L;
-  g.strokeStyle = 'rgba(200,215,255,.9)'; g.lineWidth = 1.6; g.lineCap = 'round';
-  for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * 4;
+  g.strokeStyle = 'rgba(235,242,255,.98)'; g.lineWidth = 2.6; g.lineCap = 'round';
+  for (let i = 0; i < n; i++) { const o = (i - (n - 1) / 2) * 5;
     g.beginPath(); g.moveTo(x1 + px * o, y1 + py * o); g.lineTo(x2 + px * o, y2 + py * o); g.stroke(); }
 }
 function drawMol(g, sub, s) { // dibuja la molécula centrada en el origen; s = unidad de escala
@@ -850,27 +856,27 @@ const ease = k => 1 - Math.pow(1 - k, 3);
 // ---------- Niveles: fase de selección + fase de vuelo ----------
 const LEVELS = [
   { obj: 'los REACTIVOS de la fotosíntesis', short: 'un reactivo', targets: ['co2', 'h2o'], decoys: ['o2', 'glu', 'luz', 'cloro'], goal: 9, spd: 54, gap: 1.35,
-    eq: '6 CO₂  +  6 H₂O   →   C₆H₁₂O₆  +  6 O₂', proc: 'FOTOSÍNTESIS = ANABOLISMO',
+    eq: '6 CO₂  +  6 H₂O   →   C₆H₁₂O₆  +  6 O₂', proc: 'LA FOTOSÍNTESIS ES UN PROCESO ANABÓLICO',
     note: 'Moléculas sencillas → una molécula compleja (glucosa): entra energía (de la luz). La luz y la clorofila se necesitan, pero NO van dentro de la ecuación.',
     tip: 'Reactivos = sustancias que entran a la reacción. Ojo: la luz y la clorofila se necesitan pero no son reactivos.' },
   { obj: 'los PRODUCTOS de la fotosíntesis', short: 'un producto', targets: ['glu', 'o2'], decoys: ['co2', 'h2o', 'luz', 'atp'], goal: 9, spd: 60, gap: 1.3,
-    eq: '6 CO₂  +  6 H₂O   →   C₆H₁₂O₆  +  6 O₂', proc: 'FOTOSÍNTESIS = ANABOLISMO',
+    eq: '6 CO₂  +  6 H₂O   →   C₆H₁₂O₆  +  6 O₂', proc: 'LA FOTOSÍNTESIS ES UN PROCESO ANABÓLICO',
     note: 'La glucosa guarda la energía que llegó de la luz; el oxígeno se libera al ambiente.',
     tip: 'Productos = lo que se forma, a la derecha de la flecha.' },
   { obj: 'los REACTIVOS de la respiración celular', short: 'un reactivo', targets: ['glu', 'o2'], decoys: ['co2', 'h2o', 'atp', 'luz'], goal: 9, spd: 66, gap: 1.2,
-    eq: 'C₆H₁₂O₆  +  6 O₂   →   6 CO₂  +  6 H₂O', proc: 'RESPIRACIÓN CELULAR = CATABOLISMO',
+    eq: 'C₆H₁₂O₆  +  6 O₂   →   6 CO₂  +  6 H₂O', proc: 'LA RESPIRACIÓN CELULAR ES UN PROCESO CATABÓLICO',
     note: 'Molécula compleja → moléculas sencillas: libera energía (ATP). La energía no es reactivo ni producto: queda afuera de la ecuación.',
     tip: 'Ojo: son las mismas moléculas que la fotosíntesis produjo.' },
   { obj: 'los PRODUCTOS de la respiración celular', short: 'un producto', targets: ['co2', 'h2o'], decoys: ['glu', 'o2', 'atp', 'n2'], goal: 10, spd: 74, gap: 1.12,
-    eq: 'C₆H₁₂O₆  +  6 O₂   →   6 CO₂  +  6 H₂O', proc: 'RESPIRACIÓN CELULAR = CATABOLISMO',
+    eq: 'C₆H₁₂O₆  +  6 O₂   →   6 CO₂  +  6 H₂O', proc: 'LA RESPIRACIÓN CELULAR ES UN PROCESO CATABÓLICO',
     note: 'La energía se libera pero NO es producto de la ecuación: si cae “Energía (ATP)”, dejala pasar.',
     tip: 'La energía (ATP) se libera, pero no forma parte de la ecuación.' },
   { obj: 'las MOLÉCULAS de la ecuación de la fotosíntesis', short: 'parte de la ecuación', targets: ['co2', 'h2o', 'glu', 'o2'], decoys: ['atp', 'n2', 'ch4'], goal: 12, spd: 84, gap: 1.02,
-    eq: '6 CO₂  +  6 H₂O   →   C₆H₁₂O₆  +  6 O₂', proc: 'FOTOSÍNTESIS = ANABOLISMO',
+    eq: '6 CO₂  +  6 H₂O   →   C₆H₁₂O₆  +  6 O₂', proc: 'LA FOTOSÍNTESIS ES UN PROCESO ANABÓLICO',
     note: 'Reactivos y productos juntos: toda molécula que está dentro de la ecuación vale.',
     tip: 'Acá cuentan reactivos Y productos: todo lo que esté en la ecuación.' },
   { obj: 'las MOLÉCULAS de AMBAS ecuaciones', short: 'parte de una ecuación', targets: ['co2', 'h2o', 'o2', 'glu'], decoys: ['atp', 'luz', 'cloro', 'n2', 'ch4'], goal: 14, spd: 96, gap: .92,
-    eq: 'Las dos ecuaciones son inversas', proc: 'ANABOLISMO  ↔  CATABOLISMO',
+    eq: 'Las dos ecuaciones son inversas', proc: 'UN PROCESO ANABÓLICO Y UNO CATABÓLICO',
     note: 'La fotosíntesis guarda energía en la glucosa; la respiración la libera. Energía, luz y clorofila no van en ninguna ecuación.',
     tip: 'Repaso final: las moléculas de las dos ecuaciones, y más rápido.' }
 ];
@@ -1280,13 +1286,15 @@ const TUTO = [
   { t: 'Después: capturá solo a las correctas', p: 'Caen sustancias del cielo. Capturá únicamente las del objetivo. Si una correcta llega abajo, perdés una vida; si capturás una que no es, baja tu precisión.',
     x: () => matchMedia('(pointer:coarse)').matches || innerWidth < 700 ? '<span class="kc"><i class="wide">Dedo</i></span> Arrastrá para mover · captura sola'
       : '<span class="kc"><i>←</i><i>→</i></span> Mover &nbsp; <span class="kc"><i class="wide">Espacio</i></span> Capturar &nbsp; <span class="kc"><i>P</i></span> Pausa' },
-  { t: 'Las dos ecuaciones', p: 'Fotosíntesis (anabolismo): CO₂ + agua → glucosa + oxígeno; entra energía. Respiración celular (catabolismo): glucosa + oxígeno → CO₂ + agua; libera energía. La energía, la luz y la clorofila no van dentro de las ecuaciones.',
-    x: () => Object.values(POWERS).map(P => `<span class="chip" style="--c:${P.c}"><b>${P.label}</b>${P.name.charAt(0) + P.name.slice(1).toLowerCase()}</span>`).join('') }
+  { t: 'Las sustancias, de tres formas', p: 'Cada sustancia puede aparecer como palabra, como fórmula o como molécula. Aprendé a reconocerlas en cualquiera de las formas:',
+    noCv: true, x: () => '<div class="refGrid"><span></span><i>PALABRA</i><i>FÓRMULA</i><i>MOLÉCULA</i>' + ['co2', 'h2o', 'o2', 'glu'].map(k => '<b>' + SUBS[k].word + '</b>' + ['word', 'formula', 'mol'].map(r => '<span class="refCell"><img alt="" src="' + subSprite(k, r).cv.toDataURL() + '"></span>').join('')).join('') + '</div>' },
+  { t: 'Las dos ecuaciones', p: 'La fotosíntesis es un proceso anabólico: con CO₂ y agua se fabrica glucosa y se libera oxígeno; entra energía. La respiración celular es un proceso catabólico: degrada glucosa y libera energía. La energía, la luz y la clorofila no van dentro de las ecuaciones.',
+    x: () => Object.values(POWERS).map(P => `<span class="chip" style="--c:${P.c}"><b>${P.label}</b>${P.name[0]==='¡' ? '¡' + P.name.slice(1, 2).toUpperCase() + P.name.slice(2).toLowerCase() : P.name.charAt(0).toUpperCase() + P.name.slice(1).toLowerCase()}</span>`).join('') }
 ];
 let tutoI = 0, tutoDone = null, tutoT0 = 0, tutoScene = null;
 function openTuto(done) { tutoDone = done; tutoI = 0; tutoScene = null; setMode('tuto'); showTuto(); SFX.ui('card'); }
 function showTuto() {
-  const T = TUTO[tutoI]; tutoT0 = performance.now();
+  const T = TUTO[tutoI]; tutoT0 = performance.now(); $('tutoCv').style.display = T.noCv ? 'none' : '';
   $('tStep').textContent = `${tutoI + 1} / ${TUTO.length}`; $('tTitle').textContent = T.t; $('tText').textContent = T.p; $('tExtra').innerHTML = T.x();
   [...$('tDots').children].forEach((d, i) => d.classList.toggle('on', i === tutoI));
   ($('tNext').querySelector('.sb-in') || $('tNext')).textContent = tutoI === TUTO.length - 1 ? '¡A jugar!' : 'Siguiente';
@@ -1341,13 +1349,13 @@ function drawTuto(now) { // escenas animadas con los mismos elementos del juego
   } else {
     c.globalCompositeOperation = 'source-over'; c.textAlign = 'center';
     c.fillStyle = '#7fffd4'; c.font = '700 12px "Chakra Petch", sans-serif';
-    c.fillText('FOTOSÍNTESIS · ANABOLISMO', LW / 2, 26);
+    c.fillText('FOTOSÍNTESIS · PROCESO ANABÓLICO', LW / 2, 26);
     c.fillStyle = '#ffffff'; c.font = '700 14px "Chakra Petch", sans-serif';
     c.fillText('6 CO₂ + 6 H₂O → C₆H₁₂O₆ + 6 O₂', LW / 2, 48);
     c.fillStyle = '#9fd4fa'; c.font = '600 10.5px "Chakra Petch", sans-serif';
     c.fillText('moléculas sencillas → compleja: entra energía', LW / 2, 66);
     c.fillStyle = '#ffc928'; c.font = '700 12px "Chakra Petch", sans-serif';
-    c.fillText('RESPIRACIÓN CELULAR · CATABOLISMO', LW / 2, 92);
+    c.fillText('RESPIRACIÓN CELULAR · PROCESO CATABÓLICO', LW / 2, 92);
     c.fillStyle = '#ffffff'; c.font = '700 14px "Chakra Petch", sans-serif';
     c.fillText('C₆H₁₂O₆ + 6 O₂ → 6 CO₂ + 6 H₂O', LW / 2, 114);
     c.fillStyle = '#9fd4fa'; c.font = '600 10.5px "Chakra Petch", sans-serif';
@@ -1434,6 +1442,7 @@ function endGame(why = 'Fin del show', won = false) {
   $('finalSub').textContent = `puntos · ${playerName} · Nivel ${wave}` + (best > score ? ` · Tu mejor: ${best}` : '');
   $('nameInput').value = playerName; showNewCards('newCards'); newCards = [];
   if (won) { $('finalSub').textContent = `puntos · ${playerName} · ¡Completaste los ${MAX_WAVE} niveles!`; SFX.clear(); setTimeout(() => SFX.record(), 700); } else SFX.over();
+  $('againBtn').textContent = won ? 'Jugar de nuevo' : `Reintentar el nivel ${wave}`;
   SFX.pad(.03); SFX.musicStop();
   submitScore();
 }
@@ -1444,7 +1453,13 @@ $('howLink').addEventListener('click', e => { e.preventDefault(); openTuto(() =>
 $('credBack').addEventListener('click', () => setMode('menu'));
 $('playBtn').addEventListener('click', tryStart);
 $('nameBack').addEventListener('click', () => setMode('menu'));
-$('againBtn').addEventListener('click', tryStart);
+$('againBtn').addEventListener('click', overAgain);
+function overAgain() { if ($('card').dataset.mode === 'over' && $('againBtn').textContent.startsWith('Reintentar')) retryLevel(); else tryStart(); }
+function retryLevel() { // repite el mismo nivel: 3 vidas de nuevo, puntaje del nivel a cero
+  score = waveScore0; lives = 3; combo = 0; mult = 1; respect = Math.max(respect, 60);
+  toks = []; items = []; bullets = []; parts = []; rings = []; pops = []; spawnQ = []; hudMsgT = 0; flash = 0; shake = 0; ship.inv = 0;
+  openLab();
+}
 $('menuBtn').addEventListener('click', backToMenu);
 $('podBtn').addEventListener('click', openPodium);
 $('podBtn2').addEventListener('click', openPodium);
@@ -1531,7 +1546,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Enter' && state === 'lab' && !$('card').hidden) { labGo(); return; }
   if ((e.code === 'Enter' || e.code === 'Space') && state === 'clear' && performance.now() - clearAt > 1200) { nextLevel(); return; }
   if (e.code === 'Enter' && state === 'menu' && $('card').dataset.mode === 'menu') openName();
-  else if ((e.code === 'Space' || e.code === 'Enter') && state === 'over' && $('card').dataset.mode === 'over' && performance.now() - overAt > 1200) tryStart();
+  else if ((e.code === 'Space' || e.code === 'Enter') && state === 'over' && $('card').dataset.mode === 'over' && performance.now() - overAt > 1200) overAgain();
 });
 addEventListener('keyup', e => keys[e.code] = false);
 const stage = $('stage');
@@ -1559,7 +1574,7 @@ function collect(it) {
   else { // barrido: destruye todas las correctas en pantalla
     let n = 0;
     for (const tk of toks) if (tk.target && !tk.dead) { tk.dead = true; n++; gotT++; burst(tk.x, tk.y, SUBS[tk.sub].c, 6); }
-    score += n * 10; shake = 12; flash = .2; toks = toks.filter(tk => !tk.dead);
+    score += n * 10; shake = 3; flash = .1; toks = toks.filter(tk => !tk.dead);
   }
 }
 function update(dt) {
@@ -1603,7 +1618,7 @@ function update(dt) {
     if (!tk.dead && tk.target) lowest = Math.max(lowest, tk.y);
     if (!tk.dead && tk.y - tk.spr.r > STADIUM_TOP) {
       tk.dead = true;
-      if (tk.target) { escapes++; lives--; respect -= 12; flash = .3; shake = 12; combo = 0; mult = 1;
+      if (tk.target) { escapes++; lives--; respect -= 12; flash = .12; shake = 3.5; combo = 0; mult = 1;
         pops.push({ x: tk.x, y: STADIUM_TOP - 10, t: '¡Se escapó!', l: 1.2, bad: true });
         say('¡Se escapó ' + SUBS[tk.sub].word + '!'); SFX.hurt(); burst(tk.x, STADIUM_TOP, RED, 14, 150);
       } else { letGo++; score += 4; } // buen ojo: la dejaste pasar
@@ -1628,7 +1643,7 @@ function update(dt) {
     if (!best.target) { // le pegaste a una sustancia que no correspondía
       decoyHits++; waveAllyHits++; respect -= 6; score = Math.max(0, score - 10); combo = 0; mult = 1;
       burst(best.x, best.y, '#ff9db0', 12); rings.push({ x: best.x, y: best.y, r: 6, l: .5, c: '#ff3040' });
-      pops.push({ x: best.x, y: best.y, t: '-10', l: 1, bad: true }); flash = .3; shake = 10;
+      pops.push({ x: best.x, y: best.y, t: '-10', l: 1, bad: true }); flash = .12; shake = 3;
       say(SUBS[best.sub].no ? '¡' + SUBS[best.sub].no + '!' : '¡' + SUBS[best.sub].word + ' no es ' + cur().short + '!'); SFX.bad(best.x);
     } else {
       gotT++;
@@ -1637,7 +1652,7 @@ function update(dt) {
       albCount('drones');
       const oldMult = mult; combo++; waveCombo = Math.max(waveCombo, combo); comboT = 1.6; mult = Math.min(5, 1 + Math.floor(combo / 12));
       SFX.hit(1, best.x, combo); if (mult > oldMult) SFX.combo(mult); if (mult >= 5) award(2);
-      const pts = 25 * mult; score += pts; shake = Math.min(4.5, shake + .5);
+      const pts = 25 * mult; score += pts;
       pops.push({ x: best.x, y: best.y, t: '+' + pts, l: .8 });
     }
   }
