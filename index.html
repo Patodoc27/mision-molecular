@@ -974,6 +974,7 @@ function labGo() {
   if (labTry >= 2) $('labTip').classList.add('on');
 }
 function beginPlay() {
+  try { document.activeElement && document.activeElement.blur(); } catch (er) {}
   $('card').hidden = true; document.documentElement.classList.remove('scene-menu');
   state = 'play'; SFX.pad(.05); SFX.musicStart(...levelSong(wave)); startLevel(); $('pauseBtn').hidden = false; $('pads').hidden = false;
 }
@@ -1585,12 +1586,13 @@ addEventListener('resize', layoutAll); new ResizeObserver(layoutAll).observe($('
 // ---------- Entrada ----------
 addEventListener('keydown', e => {
   if (e.target && e.target.id === 'nameInput') { if (e.key === 'Enter' && state !== 'play') tryStart(); return; } // escribiendo el nombre
-  if (e.target && e.target.closest && e.target.closest('a,button')) { if (e.code === 'Space' || e.code === 'Enter') return; }
-  keys[e.code] = true; if (e.code === 'Space') e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault();
+  const onBtn = e.target && e.target.closest && e.target.closest('a,button');
   if (e.code === 'Enter' && state === 'lab' && !$('card').hidden) { labGo(); return; }
-  if ((e.code === 'Enter' || e.code === 'Space') && state === 'clear' && performance.now() - clearAt > 1200) { nextLevel(); return; }
-  if (e.code === 'Enter' && state === 'menu' && $('card').dataset.mode === 'menu') openName();
-  else if ((e.code === 'Space' || e.code === 'Enter') && state === 'over' && $('card').dataset.mode === 'over' && performance.now() - overAt > 1200) overAgain();
+  if (!onBtn && (e.code === 'Enter' || e.code === 'Space') && state === 'clear' && performance.now() - clearAt > 1200) { nextLevel(); return; }
+  if (!onBtn && e.code === 'Enter' && state === 'menu' && $('card').dataset.mode === 'menu') openName();
+  else if (!onBtn && (e.code === 'Space' || e.code === 'Enter') && state === 'over' && $('card').dataset.mode === 'over' && performance.now() - overAt > 1200) overAgain();
 });
 addEventListener('keyup', e => keys[e.code] = false);
 const stage = $('stage');
@@ -1658,7 +1660,7 @@ function update(dt) {
 
   // bandera y pelota cruzando el cielo (decoración, no se les dispara)
   flybyT -= dt;
-  if (flybyT <= 0) { flybyT = rnd(9, 15); const dir = Math.random() < .5 ? 1 : -1;
+  if (wave >= 3 && flybyT <= 0) { flybyT = rnd(9, 15); const dir = Math.random() < .5 ? 1 : -1;
     flybys.push({ k: Math.random() < .5 ? 'flag' : 'ball', x: dir > 0 ? -70 : W + 70, y: rnd(34, Math.max(60, STADIUM_TOP - 130)), vx: dir * rnd(48, 78), ph: Math.random() * 6, t: 0 }); }
   for (const f of flybys) { f.t += dt; f.x += f.vx * dt; }
   flybys = flybys.filter(f => f.x > -90 && f.x < W + 90);
