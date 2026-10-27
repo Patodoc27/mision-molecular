@@ -274,8 +274,15 @@
   .card[data-mode=lab]>#lab{display:flex}
   .card[data-mode=level]>#lvlEq{display:block}
   .card[data-mode=lab]{width:min(96vw,1560px);max-width:96vw} .card[data-mode=ref]{width:min(96vw,1350px);max-width:96vw} .card[data-mode=tuto]{width:min(94vw,1150px);max-width:94vw}
-  #ref{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+  .card[data-mode=ref]>#ref{flex-direction:column;align-items:center;gap:14px;width:100%}
   .refInfo{color:#c9d2f0;font-size:clamp(14px,1.7cqw,18px);line-height:1.45;max-width:62ch;text-align:center;margin:0 auto}
+  #refEq{display:flex;flex-direction:column;gap:8px;align-items:center;width:min(100%,980px)}
+  .refEqRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+  .refEqRow i{font:700 11px "Chakra Petch";letter-spacing:.14em;color:#9fd4fa;font-style:normal}
+  .refEqRow .eqMain{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center}
+  .refEqRow .eqBlk{background:rgba(20,32,72,.8);border:1px solid rgba(140,190,255,.3);border-radius:8px;padding:4px 8px;font:700 13px "Chakra Petch";color:#eaf4ff}
+  .refEqRow .eqSep{color:#7fb2e8;font-weight:700}
+  .refEqRow .eqArrow{color:#ffd27a;font-weight:800}
   .refGrid.big{width:min(100%,980px);margin:0 auto;gap:10px 14px} .refGrid.big .refCell{min-height:74px} .refGrid.big .refCell img{max-height:66px} .refGrid.big>b{font-size:clamp(13px,1.6cqw,17px)}
   #lab{flex-direction:column;align-items:center;gap:max(10px,1.6cqw);width:100%}
   .labAsk{color:#cfe0ff;font-size:clamp(14px,2.2cqw,19px);font-weight:600;max-width:60ch}
@@ -398,6 +405,7 @@
         <div class="podTitle" style="font-size:clamp(28px,4.6cqw,56px)">Memorizá las sustancias</div>
         <div class="refInfo">Cada una puede aparecer como <b>palabra</b>, <b>fórmula</b> o <b>molécula</b>. Observalas bien: después tenés que reconocerlas sin ayuda.</div>
         <div id="refGrid"></div>
+        <div id="refEq"></div>
         <button class="sb" id="refGo" type="button"><span class="sb-in">¡Al laboratorio!</span></button>
       </div>
       <div class="lab" id="lab">
@@ -894,19 +902,21 @@ const LEVELS = [
 const MAX_WAVE = LEVELS.length;
 const cur = () => LEVELS[Math.min(wave, MAX_WAVE) - 1];
 let lives = 3;
-let toks = [], spawnQ = [], spawnT = 0, gotT = 0, decoyHits = 0, escapes = 0, letGo = 0, warnedDecoy = null;
+let toks = [], spawnQ = [], spawnT = 0, gotT = 0, decoyHits = 0, escapes = 0, letGo = 0, timeLeft = 0;
 function pickRep(sub) { const reps = SUBS[sub].noFormula ? REPS.filter(r => r !== 'formula') : REPS; return reps[Math.floor(Math.random() * reps.length)]; }
+function nextSpawn() { // flujo continuo: ~62% correctas; agua y CO2 pesan un poco más y caen en formatos variados
+  const L = cur();
+  const pickW = arr => { const w = arr.map(s2 => (s2 === 'co2' || s2 === 'h2o') ? 1.7 : 1); let t = w.reduce((a, b) => a + b, 0) * Math.random(); for (let i = 0; i < arr.length; i++) { t -= w[i]; if (t <= 0) return arr[i]; } return arr[arr.length - 1]; };
+  return Math.random() < .62 ? { s: pickW(L.targets), t: true } : { s: pickW(L.decoys), t: false };
+}
 function mkTok(sub, target) {
   const rep = pickRep(sub);
   return { sub, rep, target, spr: subSprite(sub, rep), x: rnd(60, W - 60), y: -50, vy: cur().spd * rnd(.85, 1.15) * (mobileView ? .82 : 1), ph: Math.random() * 6, dead: false, tag: 0 };
 }
 function startLevel() {
-  toks = []; bullets = []; items = []; pops = []; hudMsgT = 0; spawnQ = []; gotT = 0; decoyHits = 0; escapes = 0; letGo = 0; warnedDecoy = null;
+  toks = []; bullets = []; items = []; pops = []; hudMsgT = 0; spawnQ = []; gotT = 0; decoyHits = 0; escapes = 0; letGo = 0;
   const L = cur();
-  for (let i = 0; i < L.goal; i++) spawnQ.push(L.targets[i % L.targets.length]);
-  const nd = Math.round(L.goal * .55); // distractores: ~55% del total para obligar a pensar
-  for (let i = 0; i < nd; i++) spawnQ.push('!' + L.decoys[i % L.decoys.length]);
-  for (let i = spawnQ.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)), t = spawnQ[i]; spawnQ[i] = spawnQ[j]; spawnQ[j] = t; }
+  timeLeft = wave === 1 ? 45 : wave === 2 ? 50 : 60; // duración por nivel: 45s, 50s, 60s en adelante
   spawnT = 1.1;
   if (state === 'play') { waveScore0 = score; waveCombo = 0; waveAllyHits = 0; countT = 3.2; countN = 0; clearTimeout(banner.t); $('banner').classList.remove('on'); }
   else banner(`Nivel ${wave}`, cur().obj);
@@ -1396,13 +1406,21 @@ const LEVEL_SONGS = ['cumbia', 'murga', 'cuarteto', 'rock', 'malambo', 'electro'
 const levelSong = w => { const i = (w - 1) % LEVEL_SONGS.length, c = Math.floor((w - 1) / LEVEL_SONGS.length); return [Math.min(140, LEVEL_BPM[i] + c * 8), LEVEL_SONGS[i]]; };
 let startWave = 1; // las partidas siempre arrancan en la ronda 1
 const REF_HTML = () => '<div class="refGrid big"><span></span><i>PALABRA</i><i>FÓRMULA</i><i>MOLÉCULA</i>' + ['co2', 'h2o', 'o2', 'glu'].map(k => '<b>' + SUBS[k].word + '</b>' + ['word', 'formula', 'mol'].map(r => '<span class="refCell"><img alt="" src="' + subSprite(k, r).cv.toDataURL() + '"></span>').join('')).join('') + '</div>';
-function openRef() { state = 'ref'; document.documentElement.classList.add('scene-menu'); $('refGrid').innerHTML = REF_HTML(); setMode('ref'); SFX.ui('card'); }
-$('refGo').addEventListener('click', () => { SFX.ui('card'); openLab(); });
+const eqBlk = eq => eq.split('→').map(side => side.trim().split('+').map(t => `<span class="eqBlk">${t.trim()}</span>`).join('<span class="eqSep">+</span>')).join('<span class="eqArrow">→</span>');
+let refNext = 'lab';
+function openRef(next) {
+  refNext = next || 'lab'; state = 'ref'; document.documentElement.classList.add('scene-menu');
+  $('refGrid').innerHTML = REF_HTML();
+  $('refEq').innerHTML = '<div class="refEqRow"><i>FOTOSÍNTESIS</i><div class="eqMain">' + eqBlk(LEVELS[0].eq) + '</div></div><div class="refEqRow"><i>RESPIRACIÓN CELULAR</i><div class="eqMain">' + eqBlk(LEVELS[2].eq) + '</div></div>';
+  $('refGo').querySelector('.sb-in').textContent = refNext === 'menu' ? '¡Entendido!' : '¡Al laboratorio!';
+  setMode('ref'); SFX.ui('card');
+}
+$('refGo').addEventListener('click', () => { SFX.ui('card'); if (refNext === 'menu') backToMenu(); else openLab(); });
 function start() {
   $('board').hidden = true; $('boardNote').hidden = true; $('rank').textContent = '';
   wave = startWave; score = 0; respect = 100; combo = 0; mult = 1; bullets = []; parts = []; rings = []; pops = []; items = [];
   itemT = 8; buffs = { triple: 0, rapid: 0 }; paused = false; $('pauseOv').hidden = true; newCards = []; lives = 3; ship.inv = 0;
-  galaxyState.targetActive = 0; SFX.start(); openRef();
+  galaxyState.targetActive = 0; SFX.start(); openRef('lab');
 }
 let clearAt = 0;
 function showLevelResults(bonus) {
@@ -1542,7 +1560,7 @@ function layoutAll() {
   const cw = Math.round(W * SC), ch = Math.round(H * SC);
   if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
   bloomCv.width = 220; bloomCv.height = Math.round(220 * H / W);
-  stadiumPxH = Math.min(vw * 536 / 1376, .52 * sh); IMG_H = stadiumPxH / (sw / W); document.documentElement.classList.toggle('is-mobile', matchMedia('(pointer:coarse)').matches || vw < 700); const mob = mobileView = vw < 700 || (matchMedia('(pointer:coarse)').matches && vw < vh); stadiumLift = mob ? stadiumPxH * .4 : 0; const liftL = stadiumLift / (sw / W); SHIP_Y = H - IMG_H * .52 - liftL; STADIUM_TOP = SHIP_Y - 26; ship.y = SHIP_Y;      // fondo 20% más abajo; la nave 25% más abajo (medidos sobre el alto del fondo)
+  stadiumPxH = Math.min(vw * 536 / 1376, .52 * sh); IMG_H = stadiumPxH / (sw / W); document.documentElement.classList.toggle('is-mobile', matchMedia('(pointer:coarse)').matches || vw < 700); const mob = mobileView = vw < 700 || (matchMedia('(pointer:coarse)').matches && vw < vh); stadiumLift = mob ? stadiumPxH * .4 : 0; const liftL = stadiumLift / (sw / W); SHIP_Y = H - IMG_H * .42 - liftL; STADIUM_TOP = SHIP_Y - 26; ship.y = SHIP_Y;      // fondo 20% más abajo; la nave 25% más abajo (medidos sobre el alto del fondo)
   crowd = Array.from({ length: 170 }, () => ({ x: rnd0(14, W - 14), y: rnd0(H - IMG_H * .34 - liftL, H - IMG_H * .02 - liftL), p: Math.random() * 6, c: Math.random() < .3 ? '#74c0f5' : '#ffffff' }));
   const scale = sw / W, hb = $('hud').getBoundingClientRect().bottom;
   SANCOR_Y0 = Math.max(6, (hb + 8 - (vh - sh)) / scale);                                           // arranca justo debajo del HUD
@@ -1634,8 +1652,8 @@ function update(dt) {
   if (Math.random() < .8) parts.push({ x: ship.x + rnd(-3, 3), y: ship.y + 12, vx: rnd(-14, 14), vy: rnd(60, 110), l: .35, m: .35, c: Math.random() < .5 ? CELESTE : '#ffffff', s: .7 });
 
   // moléculas cayendo: primero salen de la cola y después caen serpenteando
-  spawnT -= dt;
-  if (spawnQ.length && spawnT <= 0) { const s0 = spawnQ.shift(); toks.push(mkTok(s0[0] === '!' ? s0.slice(1) : s0, s0[0] !== '!')); spawnT = cur().gap * rnd(.8, 1.25); }
+  spawnT -= dt; timeLeft -= dt;
+  if (timeLeft > 0 && spawnT <= 0) { const n = nextSpawn(); toks.push(mkTok(n.s, n.t)); spawnT = cur().gap * rnd(.8, 1.25); }
   let lowest = -1e9;
   for (const tk of toks) {
     tk.y += tk.vy * dt; tk.x += Math.sin(tk.y * .018 + tk.ph) * 26 * dt;
@@ -1690,14 +1708,14 @@ function update(dt) {
   flash = Math.max(0, flash - dt); shake *= .88; hudMsgT -= dt;
   if (comboT > 0) { comboT -= dt; if (comboT <= 0) { combo = 0; mult = 1; } }
 
-  if (!spawnQ.length && !toks.length) { // nivel superado: salieron todas
+  if (lives <= 0) endGame('Se escaparon demasiadas moléculas');
+  else if (timeLeft <= 0 && !toks.length) { // nivel superado: se acabó el tiempo y ya no queda nada cayendo
     const bonus = letGo * 3 + (decoyHits === 0 && escapes === 0 ? 25 : 0); score += bonus;
     say('¡Nivel superado!'); SFX.clear();
     bullets = [];
     albWave(wave, decoyHits === 0); grantCard();
     if (wave >= MAX_WAVE) endGame('¡Completaste las dos ecuaciones!', true); else showLevelResults(bonus);
-  } else if (lives <= 0) endGame('Se escaparon demasiadas moléculas');
-  else if (respect <= 0) endGame('Se acabó la precisión');
+  } else if (respect <= 0) endGame('Se acabó la precisión');
   danger = lowest > STADIUM_TOP - 90;
   if (danger && performance.now() - lastBeat > 900) { lastBeat = performance.now(); SFX.danger(); }
 }
@@ -1731,7 +1749,6 @@ function draw(t) {
     ctx.globalAlpha = .17; ctx.drawImage(sp, tk.x - gs / 2, tk.y + bob - gs / 2, gs, gs); ctx.globalAlpha = 1;
     const k = mobileView ? 1.35 : 1;
     ctx.drawImage(tk.spr.cv, tk.x - tk.spr.cv.width * k / 2, tk.y + bob - tk.spr.cv.height * k / 2, tk.spr.cv.width * k, tk.spr.cv.height * k);
-    if (!tk.target && !warnedDecoy && tk.y > SANCOR_Y0 + 30) { warnedDecoy = tk; tk.tag = 3.5; }
   }
   for (const p of parts) dot(p.x, p.y, p.c, p.s * 2.2, Math.max(0, p.l / p.m));
   for (const f of flashes) { const k = 1 - f.l / f.m, rr = 6 + (f.r1 - 6) * (1 - Math.pow(1 - k, 2)), a = Math.max(0, f.l / f.m); dot(f.x, f.y, f.c, rr * .5, a * .8); dot(f.x, f.y, '#ffffff', rr * .16, a); }
@@ -1765,7 +1782,6 @@ function draw(t) {
   const tag = (x, y, txt, col, a) => { ctx.font = '700 12px "Chakra Petch", system-ui'; const w = ctx.measureText(txt).width + 16; ctx.globalAlpha = a; const px = x; x = Math.max(w / 2 + 6, Math.min(W - w / 2 - 6, x));
     ctx.fillStyle = 'rgba(7,11,32,.85)'; ctx.beginPath(); ctx.roundRect(x - w / 2, y - 18, w, 20, 10); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();
     ctx.fillStyle = col; ctx.fillText(txt, x, y - 4); ctx.beginPath(); ctx.moveTo(px - 4, y + 2); ctx.lineTo(px + 4, y + 2); ctx.lineTo(px, y + 7); ctx.fill(); };
-  for (const tk of toks) if (tk.tag > 0) { tk.tag -= 1 / 60; tag(tk.x, tk.y - tk.spr.r - 6, '¡No es el objetivo! Dejala pasar', '#ff9db0', Math.min(1, tk.tag)); }
   ctx.globalAlpha = 1;
   for (const p of pops) { ctx.globalAlpha = Math.min(1, p.l * 2); ctx.fillStyle = p.bad ? '#ff4d5e' : '#ffe3e8'; ctx.fillText(p.t, p.x, p.y - 10); }
   ctx.globalAlpha = 1;
@@ -1777,7 +1793,7 @@ function hud() {
   ctx.textAlign = 'center';
   const L = cur();
   ctx.globalAlpha = .92; ctx.fillStyle = '#9fd4fa'; ctx.font = '700 13px "Chakra Petch", system-ui';
-  ctx.fillText(`OBJETIVO: ${L.obj.toUpperCase()} · ${gotT}/${L.goal}`, W / 2, SANCOR_Y0 + 4); ctx.globalAlpha = 1;
+  ctx.fillText(`OBJETIVO: ${L.obj.toUpperCase()} · QUEDAN ${Math.max(0, Math.ceil(timeLeft))}s`, W / 2, SANCOR_Y0 + 4); ctx.globalAlpha = 1;
   if (hudMsgT > 0) { ctx.globalAlpha = Math.min(1, hudMsgT * 2); ctx.fillStyle = GOLD; ctx.font = '700 18px "Chakra Petch", system-ui'; ctx.fillText(hudMsg, W / 2, STADIUM_TOP - 64); ctx.globalAlpha = 1; }
 }
 
@@ -1984,7 +2000,7 @@ const Intro = (() => {
   }
   function finish() {
     if (done) return; done = true; cancelAnimationFrame(raf); box.classList.add('out'); setTimeout(() => { box.hidden = true; }, 480);
-    state = 'menu'; SFX.ensure(); SFX.musicStart(112, 'menu'); splitTitle();
+    SFX.ensure(); SFX.musicStart(112, 'menu'); splitTitle(); openRef('menu');
   }
   box.addEventListener('click', e => { if (e.target.id === 'introSkip') return; begin(); });
   addEventListener('keydown', e => { if (done) return; if (e.key === 'Escape') finish(); else begin(); });
