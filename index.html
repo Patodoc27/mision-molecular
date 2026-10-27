@@ -1318,7 +1318,7 @@ const TUTO = [
     x: () => '' },
   { t: 'Después: capturá solo a las correctas', p: 'Caen sustancias del cielo. Capturá únicamente las del objetivo. Si una correcta llega abajo, perdés una vida; si capturás una que no es, baja tu precisión.',
     x: () => matchMedia('(pointer:coarse)').matches || innerWidth < 700 ? '<span class="kc"><i class="wide">Dedo</i></span> Arrastrá para mover · captura sola'
-      : '<span class="kc"><i>←</i><i>→</i></span> Mover &nbsp; <span class="kc"><i class="wide">Espacio</i></span> Capturar &nbsp; <span class="kc"><i>P</i></span> Pausa' },
+      : '<span class="kc"><i>←</i><i>→</i></span> Mover &nbsp; <span class="kc"><i>↑</i></span> Capturar &nbsp; <span class="kc"><i>P</i></span> Pausa' },
   { t: 'Las sustancias, de tres formas', p: 'Cada sustancia puede aparecer como palabra, como fórmula o como molécula. Aprendé a reconocerlas en cualquiera de las formas:',
     noCv: true, x: () => REF_HTML().replace('refGrid big', 'refGrid') },
   { t: 'Las dos ecuaciones', p: 'La fotosíntesis es un proceso anabólico: con CO₂ y agua se fabrica glucosa y se libera oxígeno; entra energía. La respiración celular es un proceso catabólico: degrada glucosa y libera energía. La energía, la luz y la clorofila no van dentro de las ecuaciones.',
@@ -1596,9 +1596,9 @@ addEventListener('keyup', e => keys[e.code] = false);
 const stage = $('stage');
 addEventListener('contextmenu', e => { if (!(e.target.closest && e.target.closest('input,textarea,a'))) e.preventDefault(); });   // long press en el celu: sin menú contextual
 function toLogical(e) { const r = stage.getBoundingClientRect(); return (e.clientX - r.left) / r.width * W; }
-stage.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('#pads')) return; if (state === 'play' && !paused) { touching = true; ship.x = toLogical(e); } });
-stage.addEventListener('pointermove', e => { if (touching) ship.x = toLogical(e); });
-addEventListener('pointerup', () => touching = false);
+stage.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; if (e.target.closest && e.target.closest('#pads')) return; if (state === 'play' && !paused) { touching = true; ship.x = toLogical(e); } });
+stage.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') return; if (touching) ship.x = toLogical(e); });
+addEventListener('pointerup', e => { if (e.pointerType === 'mouse') return; touching = false; });
 
 // ---------- Efectos ----------
 function burst(x, y, c, n, sp = 150) {
@@ -1635,7 +1635,7 @@ function update(dt) {
     if (countT <= 0) { SFX.beep(0); banner('¡Ya!', '♪ ' + SFX.trackName(levelSong(wave)[1])); }
     return;
   }
-  if ((keys.Space || touching) && ship.cd <= 0) {
+  if ((keys.ArrowUp || keys.KeyW || touching) && ship.cd <= 0) {
     bullets.push({ x: ship.x, y: ship.y - 24, vx: 0 }); SFX.shot(ship.x); flashBoom(ship.x, ship.y - 26, CELESTE, 16);
     if (buffs.triple > 0) { bullets.push({ x: ship.x - 8, y: ship.y - 20, vx: -110 }); bullets.push({ x: ship.x + 8, y: ship.y - 20, vx: 110 }); }
     ship.cd = buffs.rapid > 0 ? .085 : .2;
