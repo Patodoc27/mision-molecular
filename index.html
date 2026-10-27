@@ -25,7 +25,7 @@
   #bg{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:0}
   #wrap{position:absolute;inset:0;z-index:1;display:flex;align-items:flex-end;justify-content:center;container-type:size}
   #wrap>#stadium{position:absolute;left:0;bottom:0;width:100%;pointer-events:none;display:block;opacity:.85;z-index:0}
-  #stage{position:relative;z-index:1;width:min(100cqw,133.333cqh);aspect-ratio:4/3;flex:none}
+  #stage{position:relative;z-index:1;width:100cqw;height:100cqh;flex:none}
   #stage::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;box-shadow:inset 0 0 130px rgba(3,4,14,.5);border-radius:2px}
   #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   #bloom{filter:blur(6px) brightness(1.3);mix-blend-mode:screen;opacity:.75;pointer-events:none}
@@ -640,7 +640,7 @@ function drawBg(t) {
 }
 
 // ================= Juego =================
-const W = 800; let SC = 1.5, H = 600; // perf (declarado arriba): 0 normal, 1 sin bloom y fondo a menos fps, 2 además resolución menor
+let W = 800; let SC = 1.5, H = 600; // perf (declarado arriba): 0 normal, 1 sin bloom y fondo a menos fps, 2 además resolución menor
 const cv = document.getElementById('game'), ctx = cv.getContext('2d');
 const bloomCv = document.getElementById('bloom'), bctx = bloomCv.getContext('2d');
 const $ = id => document.getElementById(id);
@@ -1556,7 +1556,7 @@ function kickSparks() { if (!sparkRun) { sparkRun = true; requestAnimationFrame(
 function layoutAll() {
   const wrap = $('wrap'), vw = wrap.clientWidth, vh = wrap.clientHeight; if (!(vw > 0 && vh > 0)) return;
   let sw;
-  if (vw / vh >= 4 / 3) { sw = vh * 4 / 3; H = 600; } else { sw = vw; H = Math.min(1700, W * vh / vw); }
+  if (vw / vh >= 4 / 3) { H = 600; W = Math.min(2400, Math.round(H * vw / vh)); sw = vw; } else { W = 800; sw = vw; H = Math.min(1700, W * vh / vw); } // panorámica: mundo ancho, la nave llega a los bordes
   const sh = sw * H / W; $('stage').style.width = sw + 'px'; $('stage').style.height = sh + 'px';
   SC = Math.min(1.5, Math.sqrt(1.3e6 / (W * H))) * (perf >= 2 ? .75 : 1);     // tope de píxeles: en pantallas altas (celu) el canvas no se dispara
   const cw = Math.round(W * SC), ch = Math.round(H * SC);
