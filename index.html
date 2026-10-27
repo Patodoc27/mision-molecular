@@ -291,7 +291,7 @@
   @media (max-width:1250px){.labGrid{grid-template-columns:repeat(3,1fr)}}
   @media (max-width:520px){.labGrid{grid-template-columns:repeat(2,1fr)}}
   .labOpt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 6px 8px;border:0;border-radius:12px;background:#121730;color:#cfd6f0;cursor:pointer;box-shadow:0 0 0 1px #313857 inset;transition:background .15s,box-shadow .15s;min-height:104px}
-  .labOpt.sel{background:#22142c;color:#fff;box-shadow:0 0 0 2px var(--pink) inset,0 0 18px rgba(214,32,104,.3)}
+  .labOpt.sel{background:#0c2233;color:#fff;box-shadow:0 0 0 2px var(--celeste) inset,0 0 18px rgba(116,192,245,.4)}
   .labOpt.bad{box-shadow:0 0 0 2px #ff5a78 inset;animation:shake .3s}
   @keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
   #stage .labOpt canvas{position:static;inset:auto;width:120px;height:80px}
@@ -302,7 +302,7 @@
   .refCell{display:flex;align-items:center;justify-content:center;background:rgba(7,11,32,.62);border:1px solid rgba(116,192,245,.22);border-radius:10px;min-height:46px;padding:3px}
   .refCell img{max-width:100%;max-height:44px;display:block}
   .labTag{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-  .labOpt.sel .labTag{color:#ffb3cf}
+  .labOpt.sel .labTag{color:#9fd4fa}
   .labMsg{min-height:20px;color:#ffb3cf;font-weight:600;font-size:clamp(13px,1.9cqw,16px)}
   .labEq{display:none;color:#9fd4fa;font-size:clamp(12px,1.7cqw,15px);background:rgba(116,192,245,.08);border:1px solid rgba(116,192,245,.28);border-radius:10px;padding:8px 12px;max-width:100%}
   .labEq.on{display:block}
@@ -902,7 +902,7 @@ const LEVELS = [
 const MAX_WAVE = LEVELS.length;
 const cur = () => LEVELS[Math.min(wave, MAX_WAVE) - 1];
 let lives = 3;
-let toks = [], spawnQ = [], spawnT = 0, gotT = 0, decoyHits = 0, escapes = 0, letGo = 0, timeLeft = 0;
+let toks = [], spawnQ = [], spawnT = 0, gotT = 0, decoyHits = 0, escapes = 0, letGo = 0, timeLeft = 0, flybys = [], flybyT = 5;
 function pickRep(sub) { const reps = SUBS[sub].noFormula ? REPS.filter(r => r !== 'formula') : REPS; return reps[Math.floor(Math.random() * reps.length)]; }
 function nextSpawn() { // flujo continuo: ~62% correctas; agua y CO2 pesan un poco más y caen en formatos variados
   const L = cur();
@@ -915,6 +915,7 @@ function mkTok(sub, target) {
 }
 function startLevel() {
   toks = []; bullets = []; items = []; pops = []; hudMsgT = 0; spawnQ = []; gotT = 0; decoyHits = 0; escapes = 0; letGo = 0;
+  flybys = []; flybyT = 4; // decoración que cruza de lado a lado (bandera y pelota)
   const L = cur();
   timeLeft = wave === 1 ? 45 : wave === 2 ? 50 : 60; // duración por nivel: 45s, 50s, 60s en adelante
   spawnT = 1.1;
@@ -1425,7 +1426,7 @@ function start() {
 let clearAt = 0;
 function showLevelResults(bonus) {
   state = 'clear'; clearAt = performance.now(); SFX.musicStop(); SFX.pad(0);
-  toks = []; items = []; bullets = []; parts = []; rings = []; pops = []; hudMsgT = 0; flash = 0; shake = 0;   // pantalla limpia al superar el nivel
+  toks = []; items = []; bullets = []; parts = []; rings = []; pops = []; flybys = []; hudMsgT = 0; flash = 0; shake = 0;   // pantalla limpia al superar el nivel
   touching = false; for (const k in keys) keys[k] = false; $('pauseBtn').hidden = true; $('pads').hidden = true; $('banner').classList.remove('on');
   const L = cur();
   $('kicker').textContent = 'Nivel completado'; $('lvlTitle').textContent = `Nivel ${wave} de ${MAX_WAVE}`;
@@ -1500,7 +1501,7 @@ $('againBtn').addEventListener('click', overAgain);
 function overAgain() { if ($('card').dataset.mode === 'over' && $('againBtn').textContent.startsWith('Reintentar')) retryLevel(); else tryStart(); }
 function retryLevel() { // repite el mismo nivel: 3 vidas de nuevo, puntaje del nivel a cero
   score = waveScore0; lives = 3; combo = 0; mult = 1; respect = Math.max(respect, 60);
-  toks = []; items = []; bullets = []; parts = []; rings = []; pops = []; spawnQ = []; hudMsgT = 0; flash = 0; shake = 0; ship.inv = 0;
+  toks = []; items = []; bullets = []; parts = []; rings = []; pops = []; spawnQ = []; flybys = []; hudMsgT = 0; flash = 0; shake = 0; ship.inv = 0;
   openLab();
 }
 $('menuBtn').addEventListener('click', backToMenu);
@@ -1654,6 +1655,13 @@ function update(dt) {
   // moléculas cayendo: primero salen de la cola y después caen serpenteando
   spawnT -= dt; timeLeft -= dt;
   if (timeLeft > 0 && spawnT <= 0) { const n = nextSpawn(); toks.push(mkTok(n.s, n.t)); spawnT = cur().gap * rnd(.8, 1.25); }
+
+  // bandera y pelota cruzando el cielo (decoración, no se les dispara)
+  flybyT -= dt;
+  if (flybyT <= 0) { flybyT = rnd(9, 15); const dir = Math.random() < .5 ? 1 : -1;
+    flybys.push({ k: Math.random() < .5 ? 'flag' : 'ball', x: dir > 0 ? -70 : W + 70, y: rnd(34, Math.max(60, STADIUM_TOP - 130)), vx: dir * rnd(48, 78), ph: Math.random() * 6, t: 0 }); }
+  for (const f of flybys) { f.t += dt; f.x += f.vx * dt; }
+  flybys = flybys.filter(f => f.x > -90 && f.x < W + 90);
   let lowest = -1e9;
   for (const tk of toks) {
     tk.y += tk.vy * dt; tk.x += Math.sin(tk.y * .018 + tk.ph) * 26 * dt;
@@ -1741,6 +1749,26 @@ function draw(t) {
     ctx.fillStyle = bg0; ctx.beginPath(); ctx.moveTo(bx - 12, STADIUM_TOP + 90); ctx.lineTo(bx + 12, STADIUM_TOP + 90);
     ctx.lineTo(bx + tilt + 85, -60); ctx.lineTo(bx + tilt - 85, -60); ctx.closePath(); ctx.fill();
   }
+  // bandera y pelota de decoración: cruzan el cielo de lado a lado
+  for (const f of flybys) {
+    const bob = Math.sin(f.t * 2.4 + f.ph) * 5;
+    ctx.save(); ctx.translate(f.x, f.y + bob);
+    if (f.k === 'flag') { // bandera argentina ondeando suave
+      ctx.rotate(Math.sin(f.t * 2) * .08);
+      ctx.fillStyle = '#74acdf'; ctx.beginPath(); ctx.roundRect(-27, -15, 54, 30, 4); ctx.fill();
+      ctx.fillStyle = '#f4f7ff'; ctx.fillRect(-27, -5, 54, 10);
+      ctx.fillStyle = '#f6b40e'; ctx.beginPath(); ctx.arc(0, 0, 4.4, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(8,12,30,.45)'; ctx.lineWidth = 1; ctx.strokeRect(-27, -15, 54, 30);
+    } else { // pelota girando
+      ctx.rotate(f.t * 1.6);
+      ctx.fillStyle = '#f4f7ff'; ctx.beginPath(); ctx.arc(0, 0, 13, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(8,12,30,.35)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#16203c'; ctx.beginPath(); ctx.arc(0, 0, 4.4, 0, 7); ctx.fill();
+      for (let i = 0; i < 5; i++) { const an = i * Math.PI * 2 / 5; ctx.beginPath(); ctx.arc(Math.cos(an) * 8.6, Math.sin(an) * 8.6, 2.4, 0, 7); ctx.fill(); }
+    }
+    ctx.restore();
+  }
+
   // moléculas cayendo: halo del color de la sustancia + sprite (molécula, fórmula o palabra)
   for (const tk of toks) {
     const bob = Math.sin(t * 2.2 + tk.ph) * 2;
